@@ -32,11 +32,18 @@ for tool in git pacman yay; do
     if ! command -v "$tool" &> /dev/null; then
         print_message "$tool is not installed. Installing $tool..." "${YELLOW}"
         if [ "$tool" = "yay" ]; then
-            sudo pacman -S --needed git base-devel
+            sudo pacman -S --needed git base-devel || {
+                print_message "Failed to install dependencies for yay." "${RED}"
+                exit 1
+            }
             git clone https://aur.archlinux.org/yay.git /tmp/yay
             cd /tmp/yay
-            makepkg -si --noconfirm
+            makepkg -si --noconfirm || {
+                print_message "Failed to install yay. Check for errors and try again." "${RED}"
+                exit 1
+            }
             cd -
+            rm -rf /tmp/yay
         else
             print_message "$tool is required but not installed. Please install it manually." "${RED}"
             exit 1
@@ -44,26 +51,30 @@ for tool in git pacman yay; do
     fi
 done
 
-# Remove existing Hyprland and Waybar configurations
-print_message "Removing existing Hyprland and Waybar configurations..." "${YELLOW}"
-rm -rf ~/.config/hypr ~/.config/waybar
-print_message "Old configurations removed." "${GREEN}"
+# Backup existing configurations
+print_message "Backing up existing Hyprland and Waybar configurations..." "${YELLOW}"
+[ -d ~/.config/hypr ] && mv ~/.config/hypr ~/.config/hypr.bak-$(date +%F)
+[ -d ~/.config/waybar ] && mv ~/.config/waybar ~/.config/waybar.bak-$(date +%F)
+print_message "Backups created at ~/.config/hypr.bak-* and ~/.config/waybar.bak-*" "${GREEN}"
 
 # Uninstall existing Hyprland and Waybar packages
 print_message "Uninstalling existing Hyprland and Waybar packages..." "${YELLOW}"
-sudo pacman -Rns --noconfirm hyprland waybar || true
-yay -Rns --noconfirm hyprland-git waybar-git || true
+sudo pacman -Rns --noconfirm hyprland waybar 2>/dev/null || print_message "No pacman packages to remove." "${YELLOW}"
+yay -Rns --noconfirm hyprland-git waybar-git 2>/dev/null || print_message "No AUR packages to remove." "${YELLOW}"
 print_message "Old packages removed." "${GREEN}"
 
-# Clear pacman and yay cache to ensure fresh install
-print_message "Clearing package cache..." "${YELLOW}"
-sudo pacman -Scc --noconfirm
-yay -Scc --noconfirm
+# Clear package cache (optional)
+print_message "Clearing package cache (optional, remove only untracked packages)..." "${YELLOW}"
+sudo pacman -Sc --noconfirm || print_message "Failed to clear pacman cache." "${YELLOW}"
+yay -Sc --noconfirm || print_message "Failed to clear yay cache." "${YELLOW}"
 print_message "Package cache cleared." "${GREEN}"
 
 # Install Hyprland and Waybar
 print_message "Installing Hyprland and Waybar..." "${YELLOW}"
-yay -S --noconfirm hyprland waybar
+yay -S --noconfirm hyprland waybar || {
+    print_message "Failed to install Hyprland or Waybar. Check your AUR setup or internet connection." "${RED}"
+    exit 1
+}
 print_message "Hyprland and Waybar installed successfully." "${GREEN}"
 
 # Create basic Hyprland configuration
@@ -131,9 +142,16 @@ EOF
 print_message "Waybar configuration created at ~/.config/waybar/" "${GREEN}"
 
 # Set permissions for configuration files
+chmod -R 600 ~/.config/hypr/* ~/.config/waybar/*
 chmod -R 700 ~/.config/hypr ~/.config/waybar
 print_message "Permissions set for configuration files." "${GREEN}"
 
+# Check for display manager
+if ! command -v sddm &> /dev/null; then
+    print_message "No display manager (e.g., sddm) detected. You may need to install one or start Hyprland manually with 'Hyprland' from a TTY." "${YELLOW}"
+fi
+
 # Instructions for the user
 print_message "Installation complete! To start Hyprland, log out and select Hyprland from your display manager, or run 'Hyprland' from a TTY." "${GREEN}"
-print_message "You may need to install a display manager (e.g., sddm) or configure your system to start Hyprland manually." "${YELLOW}"
+print_message "Backups of old configurations are available at ~/.config/hypr.bak-* and ~/.config/waybar.bak-*." "${YELLOW}"
+print_message "If Waybar fails to load, ensure a monospace font (e.g., ttf-dejavu) is installed: 'sudo pacman -S ttf-dejavu'." "${YELLOW}"
