@@ -1,0 +1,5 @@
+[Normal] <leader>e : Open neovim tree #tree
+[Normal]  "t", api.tree.focus, opts("Focus Tree")) #tree # neotree
+[normal]  "e", "<C-w>h", opts("Focus Left Window (Editor)"))
+[neotree][normal] "/", api.live_filter.start, opts("Start Live Filter"))
+
