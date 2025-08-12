@@ -26,6 +26,18 @@ if ! command -v pacman &> /dev/null; then
     exit 1
 fi
 
+# Update system and AUR to avoid version conflicts
+print_message "Updating system and AUR packages..." "${YELLOW}"
+sudo pacman -Syu --noconfirm || {
+    print_message "Failed to update system packages. Check your internet or sudo privileges." "${RED}"
+    exit 1
+}
+yay -Syu --noconfirm || {
+    print_message "Failed to update AUR packages. Check your AUR setup or internet connection." "${RED}"
+    exit 1
+}
+print_message "System and AUR updated successfully." "${GREEN}"
+
 # Check for required tools
 print_message "Checking for required tools..." "${YELLOW}"
 for tool in git pacman yay; do
@@ -63,19 +75,25 @@ sudo pacman -Rns --noconfirm hyprland waybar 2>/dev/null || print_message "No pa
 yay -Rns --noconfirm hyprland-git waybar-git 2>/dev/null || print_message "No AUR packages to remove." "${YELLOW}"
 print_message "Old packages removed." "${GREEN}"
 
-# Clear package cache (optional)
-print_message "Clearing package cache (optional, remove only untracked packages)..." "${YELLOW}"
+# Clear package cache
+print_message "Clearing package cache (removing untracked packages)..." "${YELLOW}"
 sudo pacman -Sc --noconfirm || print_message "Failed to clear pacman cache." "${YELLOW}"
 yay -Sc --noconfirm || print_message "Failed to clear yay cache." "${YELLOW}"
 print_message "Package cache cleared." "${GREEN}"
 
-# Install Hyprland and Waybar
-print_message "Installing Hyprland and Waybar..." "${YELLOW}"
-yay -S --noconfirm hyprland waybar || {
-    print_message "Failed to install Hyprland or Waybar. Check your AUR setup or internet connection." "${RED}"
-    exit 1
-}
-print_message "Hyprland and Waybar installed successfully." "${GREEN}"
+# Attempt to install stable versions
+print_message "Installing Hyprland and Waybar (stable versions)..." "${YELLOW}"
+if ! yay -S --noconfirm hyprland waybar 2>/dev/null; then
+    print_message "Stable installation failed. Attempting AUR development versions (hyprland-git, waybar-git)..." "${YELLOW}"
+    if ! yay -S --noconfirm hyprland-git waybar-git 2>/dev/null; then
+        print_message "Failed to install Hyprland or Waybar. Check dependency conflicts or run 'yay -S hyprland waybar' manually to resolve." "${RED}"
+        print_message "Common fixes: Update system, install missing dependencies (e.g., hyprutils), or use '--overwrite '*''." "${YELLOW}"
+        exit 1
+    fi
+    print_message "Hyprland and Waybar (development versions) installed successfully." "${GREEN}"
+else
+    print_message "Hyprland and Waybar (stable versions) installed successfully." "${GREEN}"
+fi
 
 # Create basic Hyprland configuration
 print_message "Setting up basic Hyprland configuration..." "${YELLOW}"
