@@ -1,1 +1,5 @@
-
+pacman checks /etc/pacman.conf for enabled repositories (e.g., core, extra, community).
+It connects to mirrors listed in /etc/pacman.d/mirrorlist to download the latest package lists.
+Open the configuration file /etc/pacman.conf with a text editor (e.g., sudo nano /etc/pacman.conf).Look for the [options] section.Add the IgnorePkg directive to specify packages you don’t want to update. For example:
+List All Installed Packages pacman -Q
+pacman -Qe: Lists only explicitly installed packages
